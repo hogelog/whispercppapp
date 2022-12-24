@@ -14,6 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   cross_file: ^0.3.3+2
   desktop_drop: ^0.4.0
+  path_provider: ^2.0.11
 
 dev_dependencies:
   flutter_test:
