@@ -8,10 +8,27 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 const APPDIR = 'org.hogel.whispercppapp';
 const TRANSCRIPT_NAME = 'transcript.txt';
+
 final PATTERN_TIMINGS = RegExp(r'^\[[^\]]+\]  ', multiLine: true);
+
+const MODELS = const [
+  'tiny.en',
+  'tiny',
+  'base.en',
+  'base',
+  'small.en',
+  'small',
+  'medium.en',
+  'medium',
+  'large',
+];
+
+const PREF_KEY_MODEL = 'MODEL';
 
 void main() {
   runApp(const MyApp());
@@ -48,8 +65,13 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Directory? _appTempDir;
 
+  String _model = MODELS.first;
+
+  SharedPreferences? _prefs = null;
+
   @override
   Widget build(BuildContext context) {
+    _initialize();
     return Scaffold(
       appBar: AppBar(
         title: Text('Speech recognition'),
@@ -86,17 +108,35 @@ class _HomeWidgetState extends State<HomeWidget> {
                         height: 100,
                         color: _dragging ? Colors.blue.withOpacity(0.4) : Colors.black12,
                         child: TextButton(
-                          onPressed: () async {
-                            final XFile? file = await openFile();
-                            if (file != null) {
-                              setState(() {
-                                _dropFile = file;
-                              });
-                            }
-                          },
+                          onPressed: _selectFile,
                           child: Text(_dropFile == null ? "Drop audio file here" : _dropFile!.path),
                         ),
                       )
+                      ),
+                    ),
+                    Container(width: 10),
+                    Container(
+                      child: Column(
+                        children: [
+                          Label(label: 'Model name'),
+                          DropdownButton<String>(
+                            value: _model,
+                            items: MODELS.map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Container(padding: EdgeInsets.all(2), child: Text(value)),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                _prefs?.setString(PREF_KEY_MODEL, value);
+                                setState(() {
+                                  _model = value;
+                                });
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ),
                     Container(width: 10),
@@ -133,20 +173,30 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   bool _runnable() => !_converting && _dropFile != null;
 
-  Future<Directory?> _setup() async {
+  File? _modelFile() => _appTempDir != null ? File(path.join(_appTempDir!.path, 'app', 'ggml-$_model.bin')) : null;
+
+  Future<void> _initialize() async {
     Directory userTempDir = await getTemporaryDirectory();
     _appTempDir = await Directory(path.join(userTempDir.path, APPDIR)).create();
-    return _appTempDir;
+
+    _prefs = await SharedPreferences.getInstance();
+    var model = (_prefs!.getString(PREF_KEY_MODEL));
+    if (model != null) {
+      setState(() {
+        _model = model;
+      });
+    }
   }
 
   void _runRecognition() async {
-    await _setup();
+    await _initialize();
 
     setState(() {
       _converting = true;
       _consoleText = '';
     });
     try {
+      await _downloadModel();
       File wavfile = await _convertWavfile(_dropFile!.path);
       await _transcript(wavfile);
     } catch (e) {
@@ -157,6 +207,25 @@ class _HomeWidgetState extends State<HomeWidget> {
         _converting = false;
       });
     }
+  }
+
+  Future<File?> _downloadModel() async {
+    File? modelfile = _modelFile();
+    if (modelfile == null) {
+      return null;
+    } else if (modelfile.existsSync()) {
+      _consoleWrite('Skip download $modelfile\n');
+      return modelfile;
+    }
+    final uri = Uri.https('huggingface.co', 'datasets/ggerganov/whisper.cpp/resolve/main/ggml-$_model.bin');
+    _consoleWrite('Downloading $uri...\n');
+    var response = await http.get(uri);
+    if (response.statusCode >= 300) {
+      throw response.body;
+    }
+    await modelfile.writeAsBytes(response.bodyBytes);
+    _consoleWrite('Download ${modelfile.path} (${response.contentLength} bytes)\n');
+    return modelfile;
   }
 
   Future<File> _convertWavfile(String sourceFile) async {
@@ -171,8 +240,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Future<String> _transcript(File wavfile) async {
     String whisperPath = path.join(_appTempDir!.path, 'app', 'whispercpp');
-    String modelPath = path.join(_appTempDir!.path, 'app', 'ggml-medium.bin');
-    var args = ['-m', modelPath, '-l', 'ja', '-f', wavfile.path];
+    var args = ['-m', _modelFile()!.path, '-l', 'ja', '-f', wavfile.path];
 
     var result = await _runCommand(whisperPath, args);
 
@@ -209,6 +277,15 @@ class _HomeWidgetState extends State<HomeWidget> {
       _consoleText += line;
     });
   }
+
+  Future<void> _selectFile() async {
+    final XFile? file = await openFile();
+    if (file != null) {
+      setState(() {
+        _dropFile = file;
+      });
+    }
+  }
 }
 
 class LabeledTextArea extends StatelessWidget {
@@ -226,13 +303,7 @@ class LabeledTextArea extends StatelessWidget {
         child: Column(
           children: [
             Container(height: 10),
-            Container(
-              padding: EdgeInsets.all(4),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-              ),
-            ),
+            Label(label: label),
             Scrollbar(
               child: SingleChildScrollView(
                 child: Container(
@@ -249,6 +320,22 @@ class LabeledTextArea extends StatelessWidget {
             )
           ],
         ),
+    );
+  }
+}
+
+class Label extends StatelessWidget {
+  const Label({super.key, required this.label});
+
+  final String label;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(top: 4, bottom: 4),
+      child: Align(
+        alignment: AlignmentDirectional.topStart,
+        child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ),
     );
   }
 }
