@@ -28,7 +28,110 @@ const MODELS = const [
   'large',
 ];
 
+const LANGS = const [
+  "en",
+  "zh",
+  "de",
+  "es",
+  "ru",
+  "ko",
+  "fr",
+  "ja",
+  "pt",
+  "tr",
+  "pl",
+  "ca",
+  "nl",
+  "ar",
+  "sv",
+  "it",
+  "id",
+  "hi",
+  "fi",
+  "vi",
+  "iw",
+  "uk",
+  "el",
+  "ms",
+  "cs",
+  "ro",
+  "da",
+  "hu",
+  "ta",
+  "no",
+  "th",
+  "ur",
+  "hr",
+  "bg",
+  "lt",
+  "la",
+  "mi",
+  "ml",
+  "cy",
+  "sk",
+  "te",
+  "fa",
+  "lv",
+  "bn",
+  "sr",
+  "az",
+  "sl",
+  "kn",
+  "et",
+  "mk",
+  "br",
+  "eu",
+  "is",
+  "hy",
+  "ne",
+  "mn",
+  "bs",
+  "kk",
+  "sq",
+  "sw",
+  "gl",
+  "mr",
+  "pa",
+  "si",
+  "km",
+  "sn",
+  "yo",
+  "so",
+  "af",
+  "oc",
+  "ka",
+  "be",
+  "tg",
+  "sd",
+  "gu",
+  "am",
+  "yi",
+  "lo",
+  "uz",
+  "fo",
+  "ht",
+  "ps",
+  "tk",
+  "nn",
+  "mt",
+  "sa",
+  "lb",
+  "my",
+  "bo",
+  "tl",
+  "mg",
+  "as",
+  "tt",
+  "haw",
+  "ln",
+  "ha",
+  "ba",
+  "jw",
+  "su",
+];
+
 const PREF_KEY_MODEL = 'MODEL';
+const PREF_KEY_LANG = 'LANG';
 
 void main() {
   runApp(const MyApp());
@@ -66,6 +169,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   Directory? _appTempDir;
 
   String _model = MODELS.first;
+  String _lang = LANGS.first;
 
   SharedPreferences? _prefs = null;
 
@@ -115,29 +219,32 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ),
                     Container(width: 10),
-                    Container(
-                      child: Column(
-                        children: [
-                          Label(label: 'Model name'),
-                          DropdownButton<String>(
-                            value: _model,
-                            items: MODELS.map<DropdownMenuItem<String>>((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Container(padding: EdgeInsets.all(2), child: Text(value)),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                _prefs?.setString(PREF_KEY_MODEL, value);
-                                setState(() {
-                                  _model = value;
-                                });
-                              }
-                            },
-                          ),
-                        ],
-                      ),
+                    LabeledDropdown(
+                      label: 'Model name',
+                      items: MODELS,
+                      value: _model,
+                      onChanged: (value) {
+                        if (value != null) {
+                          _prefs?.setString(PREF_KEY_MODEL, value);
+                          setState(() {
+                            _model = value;
+                          });
+                        }
+                      },
+                    ),
+                    Container(width: 10),
+                    LabeledDropdown(
+                      label: 'Language',
+                      items: LANGS,
+                      value: _lang,
+                      onChanged: (value) {
+                        if (value != null) {
+                          _prefs?.setString(PREF_KEY_LANG, value);
+                          setState(() {
+                            _lang = value;
+                          });
+                        }
+                      },
                     ),
                     Container(width: 10),
                     ElevatedButton(
@@ -181,11 +288,11 @@ class _HomeWidgetState extends State<HomeWidget> {
 
     _prefs = await SharedPreferences.getInstance();
     var model = (_prefs!.getString(PREF_KEY_MODEL));
-    if (model != null) {
-      setState(() {
-        _model = model;
-      });
-    }
+    var lang = (_prefs!.getString(PREF_KEY_LANG));
+    setState(() {
+      _model = model != null ? model! : MODELS.first;
+      _lang = lang != null ? lang! : LANGS.first;
+    });
   }
 
   void _runRecognition() async {
@@ -244,7 +351,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Future<String> _transcript(File wavfile) async {
     String whisperPath = path.join(_appTempDir!.path, 'app', 'whispercpp');
-    var args = ['-m', _modelFile()!.path, '-l', 'ja', '-f', wavfile.path];
+    var args = ['-m', _modelFile()!.path, '-l', _lang, '-f', wavfile.path];
 
     var result = await _runCommand(whisperPath, args);
 
@@ -327,6 +434,35 @@ class LabeledTextArea extends StatelessWidget {
     );
   }
 }
+
+class LabeledDropdown extends StatelessWidget {
+  const LabeledDropdown({super.key, required this.label, required this.items, required this.value, required this.onChanged});
+
+  final String label;
+  final List<String> items;
+  final String value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Label(label: label),
+        DropdownButton<String>(
+          value: value,
+          items: items.map<DropdownMenuItem<String>>((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Container(padding: EdgeInsets.all(2), child: Text(value)),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+}
+
 
 class Label extends StatelessWidget {
   const Label({super.key, required this.label});
