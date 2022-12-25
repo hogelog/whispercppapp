@@ -219,11 +219,15 @@ class _HomeWidgetState extends State<HomeWidget> {
     }
     final uri = Uri.https('huggingface.co', 'datasets/ggerganov/whisper.cpp/resolve/main/ggml-$_model.bin');
     _consoleWrite('Downloading $uri...\n');
-    var response = await http.get(uri);
+
+    var client = http.Client();
+    var response = await client.send(http.Request('GET', uri));
     if (response.statusCode >= 300) {
-      throw response.body;
+      throw response.stream.toString();
     }
-    await modelfile.writeAsBytes(response.bodyBytes);
+    var writer = modelfile.openWrite();
+    await writer.addStream(response.stream);
+    await writer.close();
     _consoleWrite('Download ${modelfile.path} (${response.contentLength} bytes)\n');
     return modelfile;
   }
