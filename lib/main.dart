@@ -181,6 +181,8 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   SharedPreferences? _prefs = null;
 
+  ScrollController _consoleScrollController = ScrollController();
+
   @override
   Widget build(BuildContext context) {
     _initialize();
@@ -265,6 +267,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   label: 'Console output',
                   text: _consoleText,
                   height: 150,
+                  scrollController: _consoleScrollController,
                 ),
                 LabeledTextArea(
                   label: 'Transcript',
@@ -404,6 +407,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     setState(() {
       _consoleText += line;
     });
+    _consoleScrollController.jumpTo(_consoleScrollController.position.maxScrollExtent);
   }
 
   Future<void> _selectFile() async {
@@ -415,13 +419,19 @@ class _HomeWidgetState extends State<HomeWidget> {
     }
   }
 }
-
 class LabeledTextArea extends StatelessWidget {
-  const LabeledTextArea({super.key, required this.label, required this.text, this.height = null});
+  const LabeledTextArea({
+    super.key,
+    required this.label,
+    required this.text,
+    this.height = null,
+    this.scrollController = null,
+  });
 
   final String label;
   final String text;
   final double? height;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -432,20 +442,21 @@ class LabeledTextArea extends StatelessWidget {
           children: [
             Container(height: 10),
             Label(label: label),
-            Scrollbar(
-              child: SingleChildScrollView(
-                child: Container(
-                  height: height != null ? height! - 40.0 : null,
-                  width: double.infinity,
-                  padding: EdgeInsets.all(4),
-                  decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.black45)),
+            Container(
+              height: height != null ? height! - 40.0 : null,
+              width: double.infinity,
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.black45)),
+              child: Scrollbar(
+                child: SingleChildScrollView(
+                  controller: scrollController,
                   child: SelectableText(
                     text,
                   ),
                   // child: SelectableText(_consoleText),
                 ),
               ),
-            )
+            ),
           ],
         ),
     );
