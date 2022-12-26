@@ -11,7 +11,10 @@ import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
-const APPDIR = 'org.hogel.whispercppapp';
+const APPNAME = 'org.hogel.whispercppapp';
+
+const ASSETS_PATH_DARWIN = 'Frameworks/App.framework/Versions/A/Resources/flutter_assets/';
+
 const TRANSCRIPT_NAME = 'transcript.txt';
 
 final PATTERN_TIMINGS = RegExp(r'^\[[^\]]+\]  ', multiLine: true);
@@ -166,7 +169,12 @@ class _HomeWidgetState extends State<HomeWidget> {
   String _transcriptText = '';
   String _transcriptTextWithTimings = '';
 
+  Directory? _appContentsDir;
   Directory? _appTempDir;
+  Directory? _assetsDir;
+  File? _modelFile;
+  String? _ffmpeg;
+  String? _whispercpp;
 
   String _model = MODELS.first;
   String _lang = LANGS.first;
@@ -280,11 +288,9 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   bool _runnable() => !_converting && _dropFile != null;
 
-  File? _modelFile() => _appTempDir != null ? File(path.join(_appTempDir!.path, 'app', 'ggml-$_model.bin')) : null;
-
   Future<void> _initialize() async {
     Directory userTempDir = await getTemporaryDirectory();
-    _appTempDir = await Directory(path.join(userTempDir.path, APPDIR)).create();
+    _appTempDir = await Directory(path.join(userTempDir.path, APPNAME)).create();
 
     _prefs = await SharedPreferences.getInstance();
     var model = (_prefs!.getString(PREF_KEY_MODEL));
@@ -293,6 +299,21 @@ class _HomeWidgetState extends State<HomeWidget> {
       _model = model != null ? model! : MODELS.first;
       _lang = lang != null ? lang! : LANGS.first;
     });
+
+    _appContentsDir = Directory(path.dirname(path.dirname(Platform.executable)));
+    _assetsDir = Directory(path.join(_appContentsDir!.path, ASSETS_PATH_DARWIN));
+
+    _modelFile = File(path.join(_appTempDir!.path, 'app', 'ggml-$_model.bin'));
+
+    if (bool.fromEnvironment('dart.vm.product')) {
+      var ffmpegAssetFile = File(path.join(_assetsDir!.path, 'exe', 'ffmpeg'));
+      var whispercppAssetFile = File(path.join(_assetsDir!.path, 'exe', 'whispercpp'));
+      _ffmpeg = ffmpegAssetFile.path;
+      _whispercpp = whispercppAssetFile!.path;
+    } else {
+      _ffmpeg = path.join(Directory.current.path, 'exe', 'ffmpeg');
+      _whispercpp = path.join(Directory.current.path, 'exe', 'whispercpp');
+    }
   }
 
   void _runRecognition() async {
@@ -316,13 +337,12 @@ class _HomeWidgetState extends State<HomeWidget> {
     }
   }
 
-  Future<File?> _downloadModel() async {
-    File? modelfile = _modelFile();
-    if (modelfile == null) {
-      return null;
-    } else if (modelfile.existsSync()) {
-      _consoleWrite('Skip download $modelfile\n');
-      return modelfile;
+  Future<void> _downloadModel() async {
+    if (_modelFile == null) {
+      return;
+    } else if (_modelFile!.existsSync()) {
+      _consoleWrite('Skip download $_modelFile\n');
+      return;
     }
     final uri = Uri.https('huggingface.co', 'datasets/ggerganov/whisper.cpp/resolve/main/ggml-$_model.bin');
     _consoleWrite('Downloading $uri...\n');
@@ -332,11 +352,10 @@ class _HomeWidgetState extends State<HomeWidget> {
     if (response.statusCode >= 300) {
       throw response.stream.toString();
     }
-    var writer = modelfile.openWrite();
+    var writer = _modelFile!.openWrite();
     await writer.addStream(response.stream);
     await writer.close();
-    _consoleWrite('Download ${modelfile.path} (${response.contentLength} bytes)\n');
-    return modelfile;
+    _consoleWrite('Download ${_modelFile!.path} (${response.contentLength} bytes)\n');
   }
 
   Future<File> _convertWavfile(String sourceFile) async {
@@ -345,15 +364,13 @@ class _HomeWidgetState extends State<HomeWidget> {
       wavfile.deleteSync();
     }
     var args = ['-i', _dropFile!.path, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', wavfile.path];
-    await _runCommand('ffmpeg', args);
+    await _runCommand(_ffmpeg!, args);
     return wavfile;
   }
 
   Future<String> _transcript(File wavfile) async {
-    String whisperPath = path.join(_appTempDir!.path, 'app', 'whispercpp');
-    var args = ['-m', _modelFile()!.path, '-l', _lang, '-f', wavfile.path];
-
-    var result = await _runCommand(whisperPath, args);
+    var args = ['-m', _modelFile!.path, '-l', _lang, '-f', wavfile.path];
+    var result = await _runCommand(_whispercpp!, args);
 
     var textWithTimings = result.stdout.trim();
     setState(() {
