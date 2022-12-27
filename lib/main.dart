@@ -209,8 +209,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       ),
       body: Container(
         margin: EdgeInsets.all(20),
-        child: Scrollbar(
-          child: SingleChildScrollView(
+        child: SingleChildScrollView(
             scrollDirection: Axis.vertical,
             child: Column(
               children: [
@@ -300,7 +299,6 @@ class _HomeWidgetState extends State<HomeWidget> {
                 SaveButton(_transcriptTextWithTimings),
               ],
             )
-          ),
         ),
       ),
     );
@@ -464,14 +462,12 @@ class LabeledTextArea extends StatelessWidget {
               width: double.infinity,
               padding: EdgeInsets.all(4),
               decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.black45)),
-              child: Scrollbar(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  child: SelectableText(
-                    text,
-                  ),
-                  // child: SelectableText(_consoleText),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: SelectableText(
+                  text,
                 ),
+                // child: SelectableText(_consoleText),
               ),
             ),
           ],
