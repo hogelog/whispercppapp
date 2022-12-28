@@ -185,6 +185,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   String _consoleText = '';
   String _transcriptText = '';
   String _transcriptTextWithTimings = '';
+  bool _withTimings = false;
 
   Directory? _contentsDir;
   Directory? _tempDir;
@@ -246,32 +247,40 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ),
                     Container(width: 10),
-                    LabeledDropdown(
-                      label: 'Model name',
-                      items: MODELS,
-                      value: _model,
-                      onChanged: (value) {
-                        if (value != null) {
-                          _prefs?.setString(PREF_KEY_MODEL, value);
-                          setState(() {
-                            _model = value;
-                          });
-                        }
-                      },
+                    Column(
+                      children: [
+                        Label(label: 'Model name'),
+                        Dropdown(
+                          items: MODELS,
+                          value: _model,
+                          onChanged: (value) {
+                            if (value != null) {
+                              _prefs?.setString(PREF_KEY_MODEL, value);
+                              setState(() {
+                                _model = value;
+                              });
+                            }
+                          },
+                        ),
+                      ],
                     ),
                     Container(width: 10),
-                    LabeledDropdown(
-                      label: 'Language',
-                      items: LANGS,
-                      value: _lang,
-                      onChanged: (value) {
-                        if (value != null) {
-                          _prefs?.setString(PREF_KEY_LANG, value);
-                          setState(() {
-                            _lang = value;
-                          });
-                        }
-                      },
+                    Column(
+                      children: [
+                        Label(label: 'Language'),
+                        Dropdown(
+                          items: LANGS,
+                          value: _lang,
+                          onChanged: (value) {
+                            if (value != null) {
+                              _prefs?.setString(PREF_KEY_LANG, value);
+                              setState(() {
+                                _lang = value;
+                              });
+                            }
+                          },
+                        ),
+                      ],
                     ),
                     Container(width: 10),
                     ElevatedButton(
@@ -280,24 +289,36 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                   ],
                 ),
-                LabeledTextArea(
-                  label: 'Console output',
+                Container(height: 20),
+                Label(label: 'Console output'),
+                TextArea(
                   text: _consoleText,
                   height: 150,
                   scrollController: _consoleScrollController,
                 ),
-                LabeledTextArea(
-                  label: 'Transcript',
-                  text: _transcriptText,
+                Container(height: 10),
+                Row(
+                  children: [
+                    Label(label: 'Transcript'),
+                    SizedBox(
+                      width: 200,
+                      child: SwitchListTile(
+                        value: _withTimings,
+                        onChanged: (value) {
+                          _withTimings = value == true;
+                        },
+                        title: Text('with timings', style: Theme.of(context).textTheme.bodySmall),
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                    ),
+                  ],
+                ),
+                TextArea(
+                  text: _withTimings ? _transcriptTextWithTimings : _transcriptText,
                   height: 200,
                 ),
-                SaveButton(_transcriptText),
-                LabeledTextArea(
-                  label: 'Transcript with timings',
-                  text: _transcriptTextWithTimings,
-                  height: 200,
-                ),
-                SaveButton(_transcriptTextWithTimings),
+                Container(height: 10),
+                SaveButton(_withTimings ? _transcriptTextWithTimings : _transcriptText),
               ],
             )
         ),
@@ -388,16 +409,21 @@ class _HomeWidgetState extends State<HomeWidget> {
     return wavfile;
   }
 
-  Future<String> _transcript(File wavfile) async {
-    var args = ['-m', _modelFile!.path, '-l', _lang, '-f', wavfile.path];
+  Future<void> _transcript(File wavfile) async {
+    var args = [
+      '-m', _modelFile!.path,
+      '-l', _lang,
+      '-f', wavfile.path,
+      '-pp',
+    ];
     var result = await _runCommand(_whispercpp!, args);
 
     var textWithTimings = result.stdout.trim();
+    var text = textWithTimings.replaceAll(PATTERN_TIMINGS, '');
     setState(() {
+      _transcriptText = text;
       _transcriptTextWithTimings = textWithTimings;
-      _transcriptText = textWithTimings.replaceAll(PATTERN_TIMINGS, '');
     });
-    return _transcriptTextWithTimings;
   }
 
   Future<ProcessResult> _runCommand(String command, List<String> args) async {
@@ -436,16 +462,14 @@ class _HomeWidgetState extends State<HomeWidget> {
     }
   }
 }
-class LabeledTextArea extends StatelessWidget {
-  const LabeledTextArea({
+class TextArea extends StatelessWidget {
+  const TextArea({
     super.key,
-    required this.label,
     required this.text,
     this.height = null,
     this.scrollController = null,
   });
 
-  final String label;
   final String text;
   final double? height;
   final ScrollController? scrollController;
@@ -457,10 +481,8 @@ class LabeledTextArea extends StatelessWidget {
         width: double.infinity,
         child: Column(
           children: [
-            Container(height: 10),
-            Label(label: label),
             Container(
-              height: height != null ? height! - 40.0 : null,
+              height: height,
               width: double.infinity,
               padding: EdgeInsets.all(4),
               decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.black45)),
@@ -469,7 +491,6 @@ class LabeledTextArea extends StatelessWidget {
                 child: SelectableText(
                   text,
                 ),
-                // child: SelectableText(_consoleText),
               ),
             ),
           ],
@@ -478,10 +499,9 @@ class LabeledTextArea extends StatelessWidget {
   }
 }
 
-class LabeledDropdown extends StatelessWidget {
-  const LabeledDropdown({super.key, required this.label, required this.items, required this.value, required this.onChanged});
+class Dropdown extends StatelessWidget {
+  const Dropdown({super.key, required this.items, required this.value, required this.onChanged});
 
-  final String label;
   final List<String> items;
   final String value;
   final ValueChanged<String?> onChanged;
@@ -490,7 +510,6 @@ class LabeledDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Label(label: label),
         DropdownButton<String>(
           value: value,
           items: items.map<DropdownMenuItem<String>>((String value) {
@@ -505,7 +524,6 @@ class LabeledDropdown extends StatelessWidget {
     );
   }
 }
-
 
 class Label extends StatelessWidget {
   const Label({super.key, required this.label});
