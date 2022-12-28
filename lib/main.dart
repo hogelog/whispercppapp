@@ -186,8 +186,9 @@ class _HomeWidgetState extends State<HomeWidget> {
   String _transcriptText = '';
   String _transcriptTextWithTimings = '';
 
-  Directory? _appContentsDir;
-  Directory? _appTempDir;
+  Directory? _contentsDir;
+  Directory? _tempDir;
+  Directory? _tempAppDir;
   Directory? _assetsDir;
   File? _modelFile;
   String? _ffmpeg;
@@ -308,7 +309,8 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Future<void> _initialize() async {
     Directory userTempDir = await getTemporaryDirectory();
-    _appTempDir = await Directory(path.join(userTempDir.path, APPNAME)).create();
+    _tempDir = await Directory(path.join(userTempDir.path, APPNAME));
+    _tempAppDir = await Directory(path.join(_tempDir!.path, 'app')).create(recursive: true);
 
     _prefs = await SharedPreferences.getInstance();
     var model = (_prefs!.getString(PREF_KEY_MODEL));
@@ -318,10 +320,10 @@ class _HomeWidgetState extends State<HomeWidget> {
       _lang = lang != null ? lang! : LANGS.first;
     });
 
-    _appContentsDir = Directory(path.dirname(path.dirname(Platform.executable)));
-    _assetsDir = Directory(path.join(_appContentsDir!.path, ASSETS_PATH_DARWIN));
+    _contentsDir = Directory(path.dirname(path.dirname(Platform.executable)));
+    _assetsDir = Directory(path.join(_contentsDir!.path, ASSETS_PATH_DARWIN));
 
-    _modelFile = File(path.join(_appTempDir!.path, 'app', 'ggml-$_model.bin'));
+    _modelFile = File(path.join(_tempAppDir!.path, 'ggml-$_model.bin'));
 
     if (bool.fromEnvironment('dart.vm.product')) {
       var ffmpegAssetFile = File(path.join(_assetsDir!.path, 'exe', 'ffmpeg'));
@@ -377,7 +379,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Future<File> _convertWavfile(String sourceFile) async {
-    File wavfile = File(path.join(_appTempDir!.path, "input.wav"));
+    File wavfile = File(path.join(_tempDir!.path, "input.wav"));
     if (wavfile.existsSync()) {
       wavfile.deleteSync();
     }
