@@ -30,7 +30,7 @@ import 'package:http/http.dart' as http;
 
 const APPNAME = 'org.hogel.whispercppapp';
 
-const ASSETS_PATH_DARWIN = 'Frameworks/App.framework/Versions/A/Resources/flutter_assets/';
+const ASSETS_PATH_DARWIN = 'Frameworks/App.framework/Versions/Current/Resources/flutter_assets/';
 
 const TRANSCRIPT_NAME = 'transcript.txt';
 

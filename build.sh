@@ -34,6 +34,7 @@ build() {
   Darwin)
     flutter build macos
     cd build/macos/Build/Products/Release
+    rm whispercppapp-macos-$VERSION.zip
     zip -ry whispercppapp-macos-$VERSION.zip whispercppapp.app
     cd -
     ;;
