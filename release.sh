@@ -4,6 +4,7 @@ set -euo pipefail
 
 UNAME_S=$(uname -s)
 VERSION=$(ruby -nle 'puts $1 if $_ =~ /^version: (.+)$/' pubspec.yaml)
+ZIP=whispercppapp-macos-$VERSION.zip
 
 get_ffmpeg() {
   case $UNAME_S in
@@ -29,14 +30,35 @@ get_whispercpp() {
   esac
 }
 
+sign_binary() {
+  codesign -f -s "Developer ID Application: Komuro Sunao (QMQNVXM7VQ)" --options=runtime "$1"
+}
+
 build() {
   case $UNAME_S in
   Darwin)
-    flutter build macos
+    sign_binary exe/ffmpeg
+    sign_binary exe/whispercpp
+
+    flutter build macos --release
+
     cd build/macos/Build/Products/Release
-    rm whispercppapp-macos-$VERSION.zip
-    zip -ry whispercppapp-macos-$VERSION.zip whispercppapp.app
+    rm -f "$ZIP"
+    ditto -c -k --keepParent whispercppapp.app "$ZIP"
+    open .
     cd -
+    ;;
+  esac
+}
+
+submit() {
+  case $UNAME_S in
+  Darwin)
+    xcrun notarytool submit build/macos/Build/Products/Release/$ZIP \
+      --apple-id "$APPLE_DEVELOPER_ID" \
+      --password "$APPLE_DEVELOPER_PASSWORD" \
+      --team-id "$APPLE_DEVELOPER_TEAM_ID" \
+      --wait
     ;;
   esac
 }
@@ -49,4 +71,14 @@ if [ ! -f exe/whispercpp ]; then
   get_whispercpp
 fi
 
-build
+case "$1" in
+  build)
+    build
+    ;;
+  submit)
+    submit
+    ;;
+  *)
+    echo "unknown command: $1"
+    ;;
+esac
