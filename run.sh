@@ -16,7 +16,7 @@ get_ffmpeg() {
   esac
 }
 
-get_whispercpp() {
+build_whispercpp() {
   case $UNAME_S in
   Darwin)
 	  cd whisper.cpp
@@ -28,6 +28,24 @@ get_whispercpp() {
 	  cd -
     ;;
   esac
+}
+
+setup() {
+  if [ ! -f exe/ffmpeg ]; then
+    echo "download: ffmpeg..."
+    get_ffmpeg
+  else
+    echo "skip download: ffmpeg"
+  fi
+
+  if [ ! -f exe/whispercpp ]; then
+    echo "build: whisper.cpp..."
+    build_whispercpp
+  else
+    echo "skip build: whisper.cpp"
+  fi
+
+  flutter doctor
 }
 
 sign_binary() {
@@ -63,15 +81,10 @@ submit() {
   esac
 }
 
-if [ ! -f exe/ffmpeg ]; then
-  get_ffmpeg
-fi
-
-if [ ! -f exe/whispercpp ]; then
-  get_whispercpp
-fi
-
 case "$1" in
+  setup)
+    setup
+    ;;
   build)
     build
     ;;
