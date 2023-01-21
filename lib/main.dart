@@ -337,8 +337,8 @@ class _HomeWidgetState extends State<HomeWidget> {
     var model = (_prefs!.getString(PREF_KEY_MODEL));
     var lang = (_prefs!.getString(PREF_KEY_LANG));
     setState(() {
-      _model = model != null ? model! : MODELS.first;
-      _lang = lang != null ? lang! : LANGS.first;
+      _model = model ?? MODELS.first;
+      _lang = lang ?? LANGS.first;
     });
 
     _contentsDir = Directory(path.dirname(path.dirname(Platform.executable)));
@@ -350,7 +350,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       var ffmpegAssetFile = File(path.join(_assetsDir!.path, 'exe', 'ffmpeg'));
       var whispercppAssetFile = File(path.join(_assetsDir!.path, 'exe', 'whispercpp'));
       _ffmpeg = ffmpegAssetFile.path;
-      _whispercpp = whispercppAssetFile!.path;
+      _whispercpp = whispercppAssetFile.path;
     } else {
       _ffmpeg = path.join(Directory.current.path, 'exe', 'ffmpeg');
       _whispercpp = path.join(Directory.current.path, 'exe', 'whispercpp');
