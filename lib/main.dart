@@ -31,6 +31,7 @@ import 'package:http/http.dart' as http;
 const APPNAME = 'org.hogel.whispercppapp';
 
 const ASSETS_PATH_DARWIN = 'Frameworks/App.framework/Versions/Current/Resources/flutter_assets/';
+const ASSETS_PATH_WINDOWS = 'data/flutter_assets/';
 
 const TRANSCRIPT_NAME = 'transcript.txt';
 
@@ -342,7 +343,11 @@ class _HomeWidgetState extends State<HomeWidget> {
     });
 
     _contentsDir = Directory(path.dirname(path.dirname(Platform.executable)));
-    _assetsDir = Directory(path.join(_contentsDir!.path, ASSETS_PATH_DARWIN));
+    if (Platform.isMacOS) {
+      _assetsDir = Directory(path.join(_contentsDir!.path, ASSETS_PATH_DARWIN));
+    } else if (Platform.isWindows) {
+      _assetsDir = Directory(path.join(_contentsDir!.path, ASSETS_PATH_WINDOWS));
+    }
 
     _modelFile = File(path.join(_tempAppDir!.path, 'ggml-$_model.bin'));
 
