@@ -71,7 +71,7 @@ Future<void> setupWhisper() async {
         print("Skip download whisper.cpp.");
         return;
       }
-      print("Download whisper.cpp...");
+      print("Build whisper.cpp...");
       Directory.current = "whisper.cpp";
 
       await sh(["make", "clean", "main"]);
