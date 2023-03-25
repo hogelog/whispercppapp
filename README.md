@@ -16,19 +16,19 @@ Download and extract release archvie from <https://github.com/hogelog/whispercpp
 
 ## Development
 ### Required
-- macOS (Apple silicon macOS)
+- macOS (Apple silicon macOS) or Windows
 - Flutter
 
 ### Launch from source
 ```console
 $ git clone https://github.com/hogelog/whispercppapp.git --recurse-submodules
 $ cd whispercppapp
-$ ./run.sh setup
+$ ./run.dart setup
 $ flutter run -d macos
 ```
 
 ### Release
 ```console
-$ ./run.sh build
-$ ./run.sh submit
+$ ./run.dart build
+$ ./run.dart submit
 ```
