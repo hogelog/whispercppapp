@@ -117,7 +117,6 @@ Future<void> submit() async {
       break;
     case "macos":
       await sh([
-        "echo",
         "xcrun",
         "notarytool",
         "submit",
