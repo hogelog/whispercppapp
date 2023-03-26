@@ -136,7 +136,8 @@ String appVersion() {
       .readAsStringSync()
       .split("\n")
       .firstWhere((line) => line.startsWith("version: "))
-      .replaceFirst("version: ", "");
+      .replaceFirst("version: ", "")
+      .replaceAll("\r", "");
 }
 
 String appZipName() {
