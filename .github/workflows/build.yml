@@ -28,5 +28,5 @@ jobs:
           artifacts: "build/windows/runner/whispercppapp-*.zip"
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref }}
-          name: ${{ github.ref }}
+          name: ${{ github.ref_name }}
           body: ${{ github.event.head_commit.message }}
