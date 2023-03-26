@@ -23,7 +23,7 @@ void main(List<String> args) {
 Future<void> setup() async {
   await setupFFmpeg();
   await setupWhisper();
-  await sh(["flutter", "doctor"]);
+  await flutter(["doctor"]);
 }
 
 Future<void> setupFFmpeg() async {
@@ -34,7 +34,7 @@ Future<void> setupFFmpeg() async {
         return;
       }
       print("Download ffmpeg...");
-      wget("https://github.com/GyanD/codexffmpeg/releases/download/6.0/ffmpeg-6.0-essentials_build.7z", "exe/ffmpeg.7z");
+      await wget("https://github.com/GyanD/codexffmpeg/releases/download/6.0/ffmpeg-6.0-essentials_build.7z", "exe/ffmpeg.7z");
       await sh(["7z", "x", "-oexe", "exe/ffmpeg.7z"]);
       await sh(["powershell", "Copy-Item", "exe/ffmpeg-*/bin/ffmpeg.exe", "exe/"]);
       await sh(["powershell", "Remove-Item", "-Recurse", "exe/ffmpeg-*"]);
@@ -89,16 +89,24 @@ Future<void> setupWhisper() async {
 Future<void> build() async {
   switch (Platform.operatingSystem) {
     case "windows":
-      await sh(["flutter", "build", "windows", "--release"]);
+      await flutter(["build", "windows", "--release"]);
+      Directory.current = "build/windows/runner";
+      if (File(appZipName()).existsSync()) {
+        await sh(["powershell", "Remove-Item", appZipName()]);
+      }
+      if (Directory("whispercppapp").existsSync()) {
+        await sh(["powershell", "Remove-Item", "-Recurse", "whispercppapp"]);
+      }
+      await sh(["powershell", "Copy-Item", "-Recurse", "Release", "whispercppapp"]);
+      await sh(["powershell", "Compress-Archive", "-Path", "whispercppapp", "-DestinationPath", appZipName()]);
       break;
     case "macos":
       await sign_binary("exe/ffmpeg");
       await sign_binary("exe/whispercpp");
-      await sh(["flutter", "build", "macos", "--release"]);
+      await flutter(["build", "macos", "--release"]);
       Directory.current = "build/macos/Build/Products/Release";
       await sh(["rm", "-f", appZipName()]);
       await sh(["ditto", "-c", "-k", "--keepParent", "whispercppapp.app", appZipName()]);
-      await sh(["open", "."]);
       break;
   }
 }
@@ -157,6 +165,17 @@ Future<void> sh(List<String> commands) async {
   int exitCode = await process.exitCode;
   if (exitCode != 0) {
     throw commands;
+  }
+}
+
+Future<void> flutter(List<String> args) async {
+  switch (Platform.operatingSystem) {
+    case "windows":
+      await sh(["flutter.bat", ...args]);
+      break;
+    case "macos":
+      await sh(["flutter", ...args]);
+      break;
   }
 }
 
