@@ -390,7 +390,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       _consoleWrite('Skip download $_modelFile\n');
       return;
     }
-    final uri = Uri.https('huggingface.co', 'datasets/ggerganov/whisper.cpp/resolve/main/ggml-$_model.bin');
+    final uri = Uri.https('huggingface.co', 'ggerganov/whisper.cpp/resolve/main/ggml-$_model.bin');
     _consoleWrite('Downloading $uri...\n');
 
     var client = http.Client();
