@@ -2,7 +2,7 @@ name: whispercppapp
 description: Speech-to-Text application powered by whisper.cpp
 publish_to: 'none'
 
-version: 0.1.1
+version: 0.1.2
 
 environment:
   sdk: '>=2.19.0-444.2.beta <3.0.0'
